@@ -43,6 +43,7 @@ jobs:
           CONFIG_BT_CTRL_MAIN_XTAL_PU_DURING_LIGHT_SLEEP=y
           # Suppress -Werror in third-party components (esp_matter etc.)
           CONFIG_COMPILER_DISABLE_GCC_WARNINGS=y
+          CONFIG_COMPILER_WARNINGS_AS_ERRORS=n
           # Disable Matter (we don't need it, and it has Werror=format issues)
           CONFIG_ENABLE_MATTER=n
           CONFIG_ESP_MATTER_ENABLE=n
@@ -65,6 +66,12 @@ jobs:
           set -e
           echo "=== Build exit code: $BUILD_EXIT ==="
           ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "No out dir"
+          if [ "$BUILD_EXIT" -ne 0 ]; then
+            echo "=== Final sdkconfig (grep warn/error/matter/pm) ==="
+            grep -i "warn\|error\|matter\|pm_enable\|pm_\|BT_CTRL" build/sdkconfig 2>/dev/null || echo "(no sdkconfig)"
+            echo "=== Build error log ==="
+            cat build/log/idf_py_stderr_output_* 2>/dev/null | tail -50 || echo "(no error log)"
+          fi
           find build -name "libesp_system.a" 2>/dev/null | head -5
           find out -name "*.a" 2>/dev/null | head -10
 
