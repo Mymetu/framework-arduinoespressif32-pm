@@ -47,6 +47,8 @@ jobs:
           tail -15 ../lib-builder/configs/defconfig.common
 
       - name: Build ESP32-S3 IDF libs only
+        env:
+          GITHUB_REPOSITORY_OWNER: espressif
         run: |
           cd ../lib-builder
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
