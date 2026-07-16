@@ -59,8 +59,11 @@ jobs:
           echo "DEBUG: AR_USER='$AR_USER' AR_REPO_URL='$AR_REPO_URL'"
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
           # Use IDF v5.1 to match the framework — avoids esp_matter (IDF v5.5 only)
-          ./build.sh -t esp32s3 -I release/v5.1 -A idf-release/v5.1 -b idf-libs -D debug 2>&1 | tail -100
-          echo "=== Build exit code: $? ==="
+          set +e
+          ./build.sh -t esp32s3 -I release/v5.1 -b idf-libs -D debug 2>&1
+          BUILD_EXIT=$?
+          set -e
+          echo "=== Build exit code: $BUILD_EXIT ==="
           ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "No out dir"
           find build -name "libesp_system.a" 2>/dev/null | head -5
           find out -name "*.a" 2>/dev/null | head -10
