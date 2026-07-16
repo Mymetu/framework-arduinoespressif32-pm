@@ -61,8 +61,10 @@ jobs:
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
           # Use IDF v5.3 — satisfies Arduino core (>=5.3), no esp_matter issues
           set +e
-          ./build.sh -t esp32s3 -I release/v5.3 -b idf-libs -D debug 2>&1
-          BUILD_EXIT=$?
+          export EXTRA_CFLAGS="-Wno-error=format"
+          export EXTRA_CXXFLAGS="-Wno-error=format"
+          ./build.sh -t esp32s3 -I release/v5.3 -b idf-libs 2>&1 | tail -150
+          BUILD_EXIT=${PIPESTATUS[0]}
           set -e
           echo "=== Build exit code: $BUILD_EXIT ==="
           ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "No out dir"
