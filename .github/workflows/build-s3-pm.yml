@@ -13,7 +13,7 @@ jobs:
       - name: Checkout framework-pm
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Install system deps
         run: |
@@ -72,9 +72,12 @@ jobs:
           fi
 
       - name: Commit and push updated libs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/Mymetu/framework-arduinoespressif32-pm.git"
           git add tools/sdk/esp32s3/
           if git diff --cached --quiet; then
             echo "No changes to commit"
