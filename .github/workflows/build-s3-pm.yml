@@ -43,6 +43,9 @@ jobs:
           CONFIG_BT_CTRL_MAIN_XTAL_PU_DURING_LIGHT_SLEEP=y
           # Suppress -Werror in third-party components (esp_matter etc.)
           CONFIG_COMPILER_DISABLE_GCC_WARNINGS=y
+          # Disable Matter (we don't need it, and it has Werror=format issues)
+          CONFIG_ENABLE_MATTER=n
+          CONFIG_ESP_MATTER_ENABLE=n
           PMEOF
           echo "=== defconfig.common (last 15 lines) ==="
           tail -15 /home/runner/work/lib-builder/configs/defconfig.common
@@ -50,12 +53,13 @@ jobs:
       - name: Build ESP32-S3 IDF libs
         run: |
           cd /home/runner/work/lib-builder
-          # Unset GITHUB_REPOSITORY_OWNER so config.sh defaults to "espressif"
           unset GITHUB_REPOSITORY_OWNER
           unset GITHUB_TOKEN
           source ./tools/config.sh
           echo "DEBUG: AR_USER='$AR_USER' AR_REPO_URL='$AR_REPO_URL'"
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
+          # Patch build.sh to add -Wno-error to all idf.py invocations
+          sed -i 's/\(idf\.py .*\) -DIDF_TARGET/\1 -DCMAKE_C_FLAGS="-Wno-error" -DCMAKE_CXX_FLAGS="-Wno-error" -DIDF_TARGET/g' build.sh
           ./build.sh -t esp32s3 -b idf-libs -D debug 2>&1 | tail -100
           echo "=== Build exit code: $? ==="
           ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "No out dir"
