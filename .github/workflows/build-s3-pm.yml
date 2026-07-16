@@ -58,9 +58,9 @@ jobs:
           source ./tools/config.sh
           echo "DEBUG: AR_USER='$AR_USER' AR_REPO_URL='$AR_REPO_URL'"
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
-          # Use IDF v5.1 to match the framework — avoids esp_matter (IDF v5.5 only)
+          # Use IDF v5.3 — satisfies Arduino core (>=5.3), no esp_matter issues
           set +e
-          ./build.sh -t esp32s3 -I release/v5.1 -b idf-libs -D debug 2>&1
+          ./build.sh -t esp32s3 -I release/v5.3 -b idf-libs -D debug 2>&1
           BUILD_EXIT=$?
           set -e
           echo "=== Build exit code: $BUILD_EXIT ==="
