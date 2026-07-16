@@ -9,6 +9,8 @@ jobs:
   build-s3:
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    permissions:
+      contents: write
     steps:
       - name: Checkout framework-pm
         uses: actions/checkout@v4
