@@ -1,0 +1,65 @@
+name: Build ESP32-S3 PM Libraries
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build-s3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout framework-pm
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clone esp32-arduino-lib-builder
+        run: |
+          git clone https://github.com/espressif/esp32-arduino-lib-builder.git ../lib-builder
+
+      - name: Copy modified sdkconfig
+        run: |
+          cp tools/sdk/esp32s3/sdkconfig ../lib-builder/configs/esp32s3/
+
+      - name: Build ESP32-S3 IDF libs
+        run: |
+          cd ../lib-builder
+          docker build -t idf-builder . 2>&1 | tail -5
+          ./build.sh -t esp32s3 2>&1 | tail -50
+
+      - name: Copy built libs back
+        run: |
+          # The lib builder outputs to ./build/esp32s3/<flash_mode>/
+          BUILT=../lib-builder/build/esp32s3/
+          if [ -d "$BUILT" ]; then
+            for mode_dir in $BUILT/*/; do
+              mode=$(basename "$mode_dir")
+              target_dir="tools/sdk/esp32s3/$mode/lib/"
+              if [ -d "$target_dir" ]; then
+                echo "Updating $target_dir ..."
+                cp -f "$mode_dir"*.a "$target_dir" 2>/dev/null || true
+                if [ -f "$mode_dir/include/sdkconfig.h" ]; then
+                  cp -f "$mode_dir/include/sdkconfig.h" "tools/sdk/esp32s3/$mode/include/"
+                fi
+              fi
+            done
+            echo "All libs updated successfully!"
+          else
+            echo "ERROR: Build output not found at $BUILT"
+            ls -la ../lib-builder/build/ 2>/dev/null
+            exit 1
+          fi
+
+      - name: Commit and push updated libs
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add tools/sdk/esp32s3/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Build: recompiled S3 IDF libs with CONFIG_PM_ENABLE=y, BLE modem sleep, Tickless Idle"
+            git push
+            echo "Pushed updated S3 PM libs!"
+          fi
