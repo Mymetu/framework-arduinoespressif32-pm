@@ -18,16 +18,16 @@ jobs:
       - name: Install system deps
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq python3-pip ninja-build ccache
+          sudo apt-get install -y -qq python3-pip ninja-build ccache jq
 
       - name: Clone esp32-arduino-lib-builder
         run: |
-          git clone --depth 1 https://github.com/espressif/esp32-arduino-lib-builder.git ../lib-builder
+          cd /home/runner/work
+          git clone --depth 1 https://github.com/espressif/esp32-arduino-lib-builder.git lib-builder
 
-      - name: Override S3 defconfig with PM
+      - name: Append PM settings to S3 defconfig
         run: |
-          # Append PM + BLE sleep settings to the S3 chip defconfig
-          cat >> ../lib-builder/configs/defconfig.common << 'PMEOF'
+          cat >> /home/runner/work/lib-builder/configs/defconfig.common << 'PMEOF'
 
           # --- Power Management (MV custom) ---
           CONFIG_PM_ENABLE=y
@@ -42,34 +42,38 @@ jobs:
           CONFIG_BT_CTRL_SLEEP_CLOCK_EFF=1
           CONFIG_BT_CTRL_MAIN_XTAL_PU_DURING_LIGHT_SLEEP=y
           PMEOF
+          echo "=== defconfig.common (last 15 lines) ==="
+          tail -15 /home/runner/work/lib-builder/configs/defconfig.common
 
-          echo "=== S3 defconfig (last 15 lines) ==="
-          tail -15 ../lib-builder/configs/defconfig.common
-
-      - name: Build ESP32-S3 IDF libs only
+      - name: Build ESP32-S3 IDF libs
         env:
           GITHUB_REPOSITORY_OWNER: espressif
+          GITHUB_TOKEN: ""
         run: |
-          cd ../lib-builder
+          cd /home/runner/work/lib-builder
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
           ./build.sh -t esp32s3 -b idf-libs -D debug 2>&1 | tail -100
-          echo "=== Build completed, listing output ==="
-          ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "Checking build dir..."
-          find build -name "*.a" | head -20
+          echo "=== Build exit code: $? ==="
+          ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "No out dir"
+          find build -name "libesp_system.a" 2>/dev/null | head -5
+          find out -name "*.a" 2>/dev/null | head -10
 
       - name: Copy built libs + sdkconfig.h back to framework
         run: |
-          OUT=../lib-builder/out/tools/sdk/esp32s3/
-          if [ -d "$OUT" ]; then
+          OUT=/home/runner/work/lib-builder/out/tools/sdk/esp32s3/
+          if [ -d "$OUT" ] && [ "$(ls -A $OUT 2>/dev/null)" ]; then
             echo "Found build output at $OUT"
+            ls -R $OUT | head -30
             rm -rf tools/sdk/esp32s3/*
             cp -r "$OUT"/* tools/sdk/esp32s3/
             echo "Updated framework S3 SDK files:"
-            ls -la tools/sdk/esp32s3/
+            ls tools/sdk/esp32s3/
           else
-            echo "ERROR: Build output not found at $OUT"
-            echo "Searching for .a files..."
-            find ../lib-builder -name "libesp_system.a" -type f 2>/dev/null
+            echo "ERROR: Build output not found"
+            echo "Looking for built .a files anywhere..."
+            find /home/runner/work -name "libesp_system.a" 2>/dev/null | head -10
+            echo "IDF build artifacts:"
+            find /home/runner/work/lib-builder -name "*.a" -path "*/esp_system/*" 2>/dev/null | head -10
             exit 1
           fi
 
