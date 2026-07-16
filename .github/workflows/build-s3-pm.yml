@@ -1,53 +1,71 @@
 name: Build ESP32-S3 PM Libraries
 
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 jobs:
   build-s3:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - name: Checkout framework-pm
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install system deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pip ninja-build ccache
+
       - name: Clone esp32-arduino-lib-builder
         run: |
-          git clone https://github.com/espressif/esp32-arduino-lib-builder.git ../lib-builder
+          git clone --depth 1 https://github.com/espressif/esp32-arduino-lib-builder.git ../lib-builder
 
-      - name: Copy modified sdkconfig
+      - name: Override S3 defconfig with PM
         run: |
-          cp tools/sdk/esp32s3/sdkconfig ../lib-builder/configs/esp32s3/
+          # Append PM + BLE sleep settings to the S3 chip defconfig
+          cat >> ../lib-builder/configs/defconfig.common << 'PMEOF'
 
-      - name: Build ESP32-S3 IDF libs
+          # --- Power Management (MV custom) ---
+          CONFIG_PM_ENABLE=y
+          CONFIG_PM_DFS_INIT_AUTO=y
+          CONFIG_PM_POWER_DOWN_CPU_IN_LIGHT_SLEEP=y
+          CONFIG_PM_POWER_DOWN_TAGMEM_IN_LIGHT_SLEEP=y
+          CONFIG_FREERTOS_USE_TICKLESS_IDLE=y
+          CONFIG_FREERTOS_IDLE_TIME_BEFORE_SLEEP=3
+          CONFIG_BT_CTRL_MODEM_SLEEP=y
+          CONFIG_BT_CTRL_MODEM_SLEEP_MODE_1=y
+          CONFIG_BT_CTRL_SLEEP_MODE_EFF=1
+          CONFIG_BT_CTRL_SLEEP_CLOCK_EFF=1
+          CONFIG_BT_CTRL_MAIN_XTAL_PU_DURING_LIGHT_SLEEP=y
+          PMEOF
+
+          echo "=== S3 defconfig (last 15 lines) ==="
+          tail -15 ../lib-builder/configs/defconfig.common
+
+      - name: Build ESP32-S3 IDF libs only
         run: |
           cd ../lib-builder
-          docker build -t idf-builder . 2>&1 | tail -5
-          ./build.sh -t esp32s3 2>&1 | tail -50
+          echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
+          ./build.sh -t esp32s3 -b idf-libs -D debug 2>&1 | tail -100
+          echo "=== Build completed, listing output ==="
+          ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "Checking build dir..."
+          find build -name "*.a" | head -20
 
-      - name: Copy built libs back
+      - name: Copy built libs + sdkconfig.h back to framework
         run: |
-          # The lib builder outputs to ./build/esp32s3/<flash_mode>/
-          BUILT=../lib-builder/build/esp32s3/
-          if [ -d "$BUILT" ]; then
-            for mode_dir in $BUILT/*/; do
-              mode=$(basename "$mode_dir")
-              target_dir="tools/sdk/esp32s3/$mode/lib/"
-              if [ -d "$target_dir" ]; then
-                echo "Updating $target_dir ..."
-                cp -f "$mode_dir"*.a "$target_dir" 2>/dev/null || true
-                if [ -f "$mode_dir/include/sdkconfig.h" ]; then
-                  cp -f "$mode_dir/include/sdkconfig.h" "tools/sdk/esp32s3/$mode/include/"
-                fi
-              fi
-            done
-            echo "All libs updated successfully!"
+          OUT=../lib-builder/out/tools/sdk/esp32s3/
+          if [ -d "$OUT" ]; then
+            echo "Found build output at $OUT"
+            rm -rf tools/sdk/esp32s3/*
+            cp -r "$OUT"/* tools/sdk/esp32s3/
+            echo "Updated framework S3 SDK files:"
+            ls -la tools/sdk/esp32s3/
           else
-            echo "ERROR: Build output not found at $BUILT"
-            ls -la ../lib-builder/build/ 2>/dev/null
+            echo "ERROR: Build output not found at $OUT"
+            echo "Searching for .a files..."
+            find ../lib-builder -name "libesp_system.a" -type f 2>/dev/null
             exit 1
           fi
 
