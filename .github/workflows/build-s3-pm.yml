@@ -63,8 +63,12 @@ jobs:
           set +e
           export EXTRA_CFLAGS="-Wno-error=format"
           export EXTRA_CXXFLAGS="-Wno-error=format"
-          ./build.sh -t esp32s3 -I release/v5.3 -b idf-libs 2>&1 | tail -150
-          BUILD_EXIT=${PIPESTATUS[0]}
+          ./build.sh -t esp32s3 -I release/v5.3 -b idf-libs > /tmp/build.log 2>&1 || true
+          BUILD_EXIT=$?
+          echo "=== BUILD LOG (head 80) ==="
+          head -80 /tmp/build.log
+          echo "=== BUILD LOG (tail 80) ==="
+          tail -80 /tmp/build.log
           set -e
           echo "=== Build exit code: $BUILD_EXIT ==="
           ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "No out dir"
