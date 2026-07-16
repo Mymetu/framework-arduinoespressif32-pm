@@ -41,6 +41,8 @@ jobs:
           CONFIG_BT_CTRL_SLEEP_MODE_EFF=1
           CONFIG_BT_CTRL_SLEEP_CLOCK_EFF=1
           CONFIG_BT_CTRL_MAIN_XTAL_PU_DURING_LIGHT_SLEEP=y
+          # Suppress -Werror in third-party components (esp_matter etc.)
+          CONFIG_COMPILER_DISABLE_GCC_WARNINGS=y
           PMEOF
           echo "=== defconfig.common (last 15 lines) ==="
           tail -15 /home/runner/work/lib-builder/configs/defconfig.common
