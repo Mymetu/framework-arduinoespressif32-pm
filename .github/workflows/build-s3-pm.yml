@@ -83,20 +83,26 @@ jobs:
 
       - name: Copy built libs + sdkconfig.h back to framework
         run: |
-          OUT=/home/runner/work/lib-builder/out/tools/sdk/esp32s3/
-          if [ -d "$OUT" ] && [ "$(ls -A $OUT 2>/dev/null)" ]; then
-            echo "Found build output at $OUT"
-            ls -R $OUT | head -30
-            rm -rf tools/sdk/esp32s3/*
-            cp -r "$OUT"/* tools/sdk/esp32s3/
-            echo "Updated framework S3 SDK files:"
-            ls tools/sdk/esp32s3/
+          SRC=/home/runner/work/lib-builder/out/tools/esp32-arduino-libs/esp32s3/
+          DST=tools/sdk/esp32s3/
+          if [ -d "$SRC" ]; then
+            echo "Found build output at $SRC"
+            echo "Contents:"
+            ls -la $SRC/
+            for flash_mode in dio_qspi dio_opi qio_qspi qio_opi opi_qspi opi_opi; do
+              if [ -d "$SRC/$flash_mode" ]; then
+                rm -rf "$DST/$flash_mode"
+                mkdir -p "$DST/$flash_mode"
+                cp "$SRC/$flash_mode/"*.a "$DST/$flash_mode/" 2>/dev/null || true
+                cp "$SRC/lib/"*.a "$DST/$flash_mode/" 2>/dev/null || true
+                echo "  $flash_mode: $(ls $DST/$flash_mode/ 2>/dev/null | wc -l) libs"
+              fi
+            done
+            find "$SRC" -name "sdkconfig.h" -exec cp {} "$DST/" \; 2>/dev/null || true
+            echo "Updated framework S3 SDK files"
           else
-            echo "ERROR: Build output not found"
-            echo "Looking for built .a files anywhere..."
-            find /home/runner/work -name "libesp_system.a" 2>/dev/null | head -10
-            echo "IDF build artifacts:"
-            find /home/runner/work/lib-builder -name "*.a" -path "*/esp_system/*" 2>/dev/null | head -10
+            echo "ERROR: Build output not found at $SRC"
+            find /home/runner/work/lib-builder/out -type d 2>/dev/null | head -20
             exit 1
           fi
 
