@@ -48,9 +48,14 @@ jobs:
       - name: Build ESP32-S3 IDF libs
         env:
           GITHUB_REPOSITORY_OWNER: espressif
-          GITHUB_TOKEN: ""
         run: |
           cd /home/runner/work/lib-builder
+          # Debug: check what config.sh produces
+          source ./tools/config.sh
+          echo "DEBUG: GITHUB_TOKEN='$GITHUB_TOKEN'"
+          echo "DEBUG: AR_USER='$AR_USER'"
+          echo "DEBUG: AR_REPO='$AR_REPO'"
+          echo "DEBUG: AR_REPO_URL='$AR_REPO_URL'"
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
           ./build.sh -t esp32s3 -b idf-libs -D debug 2>&1 | tail -100
           echo "=== Build exit code: $? ==="
