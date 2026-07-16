@@ -58,9 +58,8 @@ jobs:
           source ./tools/config.sh
           echo "DEBUG: AR_USER='$AR_USER' AR_REPO_URL='$AR_REPO_URL'"
           echo "Building ESP32-S3 IDF libraries (this may take 1-2 hours)..."
-          # Patch build.sh to add -Wno-error to all idf.py invocations
-          sed -i 's/\(idf\.py .*\) -DIDF_TARGET/\1 -DCMAKE_C_FLAGS="-Wno-error" -DCMAKE_CXX_FLAGS="-Wno-error" -DIDF_TARGET/g' build.sh
-          ./build.sh -t esp32s3 -b idf-libs -D debug 2>&1 | tail -100
+          # Use IDF v5.1 to match the framework — avoids esp_matter (IDF v5.5 only)
+          ./build.sh -t esp32s3 -I release/v5.1 -A idf-release/v5.1 -b idf-libs -D debug 2>&1 | tail -100
           echo "=== Build exit code: $? ==="
           ls -la out/tools/sdk/esp32s3/ 2>/dev/null || echo "No out dir"
           find build -name "libesp_system.a" 2>/dev/null | head -5
