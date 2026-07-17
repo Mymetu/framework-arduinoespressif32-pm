@@ -67,6 +67,12 @@ jobs:
           # Remove incompatible components (esp-dl etc. require IDF >= 5.0, not needed for PM)
           echo "=== Removing incompatible components ==="
           rm -rf components/esp-dl components/esp-rainmaker components/esp32-camera components/espressif__esp-dsp components/esp_littlefs
+          # Pin TinyUSB to IDF v4.4 compatible version (latest removed usbd_control.c)
+          echo "=== Pinning TinyUSB to v0.15.0 (IDF v4.4 compatible) ==="
+          cd components/arduino_tinyusb/tinyusb
+          git fetch --tags 2>/dev/null || true
+          git checkout 0.15.0 2>/dev/null || true
+          cd ../../..
           # Source IDF environment (lost when Phase 1 build.sh exited)
           echo "=== Sourcing IDF environment ==="
           . esp-idf/export.sh
