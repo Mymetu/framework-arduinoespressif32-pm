@@ -66,7 +66,7 @@ jobs:
           echo "Setup done (IDF and toolchain are now installed)."
           # Remove incompatible components (esp-dl etc. require IDF >= 5.0, not needed for PM)
           echo "=== Removing incompatible components ==="
-          rm -rf components/esp-dl components/esp-rainmaker components/esp32-camera components/espressif__esp-dsp
+          rm -rf components/esp-dl components/esp-rainmaker components/esp32-camera components/espressif__esp-dsp components/esp_littlefs
           # Source IDF environment (lost when Phase 1 build.sh exited)
           echo "=== Sourcing IDF environment ==="
           . esp-idf/export.sh
