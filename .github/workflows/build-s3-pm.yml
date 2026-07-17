@@ -58,8 +58,8 @@ jobs:
           cd /home/runner/work/lib-builder
           unset GITHUB_REPOSITORY_OWNER
           unset GITHUB_TOKEN
-          # Force Arduino core v2.0.17 (IDF v5.1 compatible, same as ssp97 framework)
-          export AR_SOURCE_BRANCH=release/v2.0.17
+          # Force Arduino core tag 2.0.17 (IDF v5.1 compatible, same as ssp97 framework)
+          export AR_SOURCE_BRANCH=2.0.17
           echo "Building ESP32-S3 IDF libraries with IDF v5.1, Arduino core $AR_SOURCE_BRANCH (this may take 1-2 hours)..."
           set +e
           ./build.sh -t esp32s3 -I release/v5.1 -b idf-libs > /tmp/build.log 2>&1 || true
