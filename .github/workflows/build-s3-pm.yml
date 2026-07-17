@@ -21,11 +21,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq python3-pip ninja-build ccache jq
+          pip install --user setuptools pyserial click cryptography future pyparsing pyelftools
 
-      - name: Clone esp32-arduino-lib-builder
+      - name: Clone esp32-arduino-lib-builder (IDF v4.4 branch)
         run: |
           cd /home/runner/work
-          git clone --depth 1 https://github.com/espressif/esp32-arduino-lib-builder.git lib-builder
+          git clone --depth 1 -b release/v4.4 https://github.com/espressif/esp32-arduino-lib-builder.git lib-builder
 
       - name: Append PM settings to S3 defconfig
         run: |
@@ -60,9 +61,10 @@ jobs:
           unset GITHUB_TOKEN
           # PlatformIO espressif32@6.13.0 uses Arduino v2.0.17 (IDF v4.4.7)
           # Arduino core branch release/v2.x matches IDF v4.4
-          echo "Building ESP32-S3 IDF libraries with IDF v4.4, Arduino core release/v2.x (this may take 1-2 hours)..."
+          export AR_SOURCE_BRANCH=release/v2.x
+          echo "Building ESP32-S3 IDF libraries with IDF v4.4, Arduino core $AR_SOURCE_BRANCH (this may take 1-2 hours)..."
           set +e
-          ./build.sh -t esp32s3 -I release/v4.4 -A release/v2.x -b idf-libs > /tmp/build.log 2>&1 || true
+          ./build.sh -t esp32s3 -I release/v4.4 -b idf-libs > /tmp/build.log 2>&1 || true
           BUILD_EXIT=$?
           echo "=== BUILD LOG (head 80) ==="
           head -80 /tmp/build.log
@@ -82,7 +84,7 @@ jobs:
 
       - name: Copy built libs + sdkconfig.h back to framework
         run: |
-          SRC=/home/runner/work/lib-builder/out/tools/esp32-arduino-libs/esp32s3/
+          SRC=/home/runner/work/lib-builder/out/tools/sdk/esp32s3/
           DST=tools/sdk/esp32s3/
           if [ -d "$SRC" ]; then
             echo "Found build output at $SRC"
