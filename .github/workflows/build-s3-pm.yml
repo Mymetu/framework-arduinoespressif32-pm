@@ -67,6 +67,9 @@ jobs:
           # Remove incompatible components (esp-dl etc. require IDF >= 5.0, not needed for PM)
           echo "=== Removing incompatible components ==="
           rm -rf components/esp-dl components/esp-rainmaker components/esp32-camera components/espressif__esp-dsp
+          # Source IDF environment (lost when Phase 1 build.sh exited)
+          echo "=== Sourcing IDF environment ==="
+          . esp-idf/export.sh
           echo "=== Phase 2: Build IDF libs with PM enabled (this may take 1-2 hours) ==="
           set +e
           ./build.sh -s -t esp32s3 -b idf_libs > /tmp/build.log 2>&1 || true
