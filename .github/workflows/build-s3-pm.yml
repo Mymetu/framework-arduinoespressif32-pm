@@ -53,16 +53,16 @@ jobs:
           echo "=== defconfig.common (last 15 lines) ==="
           tail -15 /home/runner/work/lib-builder/configs/defconfig.common
 
-      - name: Build ESP32-S3 IDF libs (IDF v5.1, matching ssp97 framework ABI)
+      - name: Build ESP32-S3 IDF libs (IDF v4.4, matching PlatformIO espressif32@6.13.0 ABI)
         run: |
           cd /home/runner/work/lib-builder
           unset GITHUB_REPOSITORY_OWNER
           unset GITHUB_TOKEN
-          # Use the actual branch name for Arduino core v2.x (IDF v5.1 era)
-          export AR_SOURCE_BRANCH=idf-release/v5.1
-          echo "Building ESP32-S3 IDF libraries with IDF v5.1, Arduino core $AR_SOURCE_BRANCH (this may take 1-2 hours)..."
+          # PlatformIO espressif32@6.13.0 uses Arduino v2.0.17 (IDF v4.4.7)
+          # Arduino core branch release/v2.x matches IDF v4.4
+          echo "Building ESP32-S3 IDF libraries with IDF v4.4, Arduino core release/v2.x (this may take 1-2 hours)..."
           set +e
-          ./build.sh -t esp32s3 -I release/v5.1 -b idf-libs > /tmp/build.log 2>&1 || true
+          ./build.sh -t esp32s3 -I release/v4.4 -A release/v2.x -b idf-libs > /tmp/build.log 2>&1 || true
           BUILD_EXIT=$?
           echo "=== BUILD LOG (head 80) ==="
           head -80 /tmp/build.log
