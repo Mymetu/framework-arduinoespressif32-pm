@@ -61,9 +61,9 @@ jobs:
           unset GITHUB_TOKEN
           # PlatformIO espressif32@6.13.0 uses Arduino v2.0.17 (IDF v4.4.7)
           export AR_SOURCE_BRANCH=release/v2.x
-          echo "=== Phase 1: Setup (clone IDF, Arduino, components) ==="
-          ./build.sh -t esp32s3 -I release/v4.4 > /tmp/setup.log 2>&1 || true
-          echo "Setup done."
+          echo "=== Phase 1: Setup (clone IDF, Arduino, components; will fail on esp-dl cmake, that's OK) ==="
+          ./build.sh -t esp32s3 -I release/v4.4 -b idf_libs > /tmp/setup.log 2>&1 || true
+          echo "Setup done (IDF and toolchain are now installed)."
           # Remove incompatible components (esp-dl etc. require IDF >= 5.0, not needed for PM)
           echo "=== Removing incompatible components ==="
           rm -rf components/esp-dl components/esp-rainmaker components/esp32-camera components/espressif__esp-dsp
