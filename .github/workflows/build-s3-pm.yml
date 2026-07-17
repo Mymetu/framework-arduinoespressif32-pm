@@ -64,7 +64,7 @@ jobs:
           export AR_SOURCE_BRANCH=release/v2.x
           echo "Building ESP32-S3 IDF libraries with IDF v4.4, Arduino core $AR_SOURCE_BRANCH (this may take 1-2 hours)..."
           set +e
-          ./build.sh -t esp32s3 -I release/v4.4 -b idf-libs > /tmp/build.log 2>&1 || true
+          ./build.sh -t esp32s3 -I release/v4.4 -b idf_libs > /tmp/build.log 2>&1 || true
           BUILD_EXIT=$?
           echo "=== BUILD LOG (head 80) ==="
           head -80 /tmp/build.log
