@@ -113,7 +113,20 @@ jobs:
                 echo "  $flash_mode: $(ls $DST/$flash_mode/ 2>/dev/null | wc -l) libs"
               fi
             done
-            find "$SRC" -name "sdkconfig.h" -exec cp {} "$DST/" \; 2>/dev/null || true
+            # Copy sdkconfig.h to the top-level AND all flash mode include/ dirs
+            # (PlatformIO uses sdkconfig.h from {flash_mode}/include/, not the top-level)
+            SDKCONFIG_SRC=$(find "$SRC" -name "sdkconfig.h" 2>/dev/null | head -1)
+            if [ -n "$SDKCONFIG_SRC" ] && [ -f "$SDKCONFIG_SRC" ]; then
+              cp "$SDKCONFIG_SRC" "$DST/sdkconfig.h"
+              echo "PM check: $(grep -c CONFIG_PM_ENABLE "$DST/sdkconfig.h" || echo 0) PM_ENABLE lines in top-level sdkconfig"
+              for flash_mode in dio_qspi dio_opi qio_qspi qio_opi opi_qspi opi_opi; do
+                if [ -d "$DST/$flash_mode" ]; then
+                  mkdir -p "$DST/$flash_mode/include"
+                  cp "$SDKCONFIG_SRC" "$DST/$flash_mode/include/sdkconfig.h"
+                  echo "  $flash_mode/include/sdkconfig.h: $(grep -c CONFIG_PM_ENABLE "$DST/$flash_mode/include/sdkconfig.h" || echo 0) PM_ENABLE lines"
+                fi
+              done
+            fi
             echo "Updated framework S3 SDK files"
           else
             echo "ERROR: Build output not found at $SRC"
