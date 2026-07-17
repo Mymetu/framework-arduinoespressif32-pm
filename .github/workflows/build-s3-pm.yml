@@ -60,11 +60,16 @@ jobs:
           unset GITHUB_REPOSITORY_OWNER
           unset GITHUB_TOKEN
           # PlatformIO espressif32@6.13.0 uses Arduino v2.0.17 (IDF v4.4.7)
-          # Arduino core branch release/v2.x matches IDF v4.4
           export AR_SOURCE_BRANCH=release/v2.x
-          echo "Building ESP32-S3 IDF libraries with IDF v4.4, Arduino core $AR_SOURCE_BRANCH (this may take 1-2 hours)..."
+          echo "=== Phase 1: Setup (clone IDF, Arduino, components) ==="
+          ./build.sh -t esp32s3 -I release/v4.4 > /tmp/setup.log 2>&1 || true
+          echo "Setup done."
+          # Remove incompatible components (esp-dl etc. require IDF >= 5.0, not needed for PM)
+          echo "=== Removing incompatible components ==="
+          rm -rf components/esp-dl components/esp-rainmaker components/esp32-camera components/espressif__esp-dsp
+          echo "=== Phase 2: Build IDF libs with PM enabled (this may take 1-2 hours) ==="
           set +e
-          ./build.sh -t esp32s3 -I release/v4.4 -b idf_libs > /tmp/build.log 2>&1 || true
+          ./build.sh -s -t esp32s3 -b idf_libs > /tmp/build.log 2>&1 || true
           BUILD_EXIT=$?
           echo "=== BUILD LOG (head 80) ==="
           head -80 /tmp/build.log
