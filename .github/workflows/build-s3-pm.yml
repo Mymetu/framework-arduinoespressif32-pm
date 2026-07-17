@@ -58,27 +58,8 @@ jobs:
           cd /home/runner/work/lib-builder
           unset GITHUB_REPOSITORY_OWNER
           unset GITHUB_TOKEN
-          # Pre-clone arduino-esp32 at tag 2.0.17 (IDF v5.1 compatible, same as ssp97 framework)
-          echo "Pre-cloning arduino-esp32 at 2.0.17..."
-          git clone --depth 1 --branch 2.0.17 https://github.com/espressif/arduino-esp32.git components/arduino
-          # Patch config.sh: fallback from remote branch to local branch for tag-based checkouts
-          python3 << 'PYEOF'
-with open('tools/config.sh', 'r') as f:
-    content = f.read()
-old = 'git checkout -b "$AR_SOURCE_BRANCH" "origin/$AR_SOURCE_BRANCH"'
-new = 'git checkout "$AR_SOURCE_BRANCH" 2>/dev/null || git checkout -b "$AR_SOURCE_BRANCH" "origin/$AR_SOURCE_BRANCH" 2>/dev/null || git checkout -b "$AR_SOURCE_BRANCH"'
-if old in content:
-    content = content.replace(old, new)
-    print("Patched config.sh successfully")
-else:
-    print("WARNING: pattern not found in config.sh, checking for similar lines...")
-    for i, line in enumerate(content.split('\n')):
-        if 'AR_SOURCE_BRANCH' in line and 'checkout' in line:
-            print(f"  Line {i+1}: {line}")
-with open('tools/config.sh', 'w') as f:
-    f.write(content)
-PYEOF
-          export AR_SOURCE_BRANCH=mv-pm-v2.0.17
+          # Use the actual branch name for Arduino core v2.x (IDF v5.1 era)
+          export AR_SOURCE_BRANCH=idf-release/v5.1
           echo "Building ESP32-S3 IDF libraries with IDF v5.1, Arduino core $AR_SOURCE_BRANCH (this may take 1-2 hours)..."
           set +e
           ./build.sh -t esp32s3 -I release/v5.1 -b idf-libs > /tmp/build.log 2>&1 || true
