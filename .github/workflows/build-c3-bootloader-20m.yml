@@ -1,0 +1,118 @@
+name: Build ESP32-C3 20MHz DIO Bootloader
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-bootloader:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout framework-pm
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pip ninja-build ccache
+          pip install --user setuptools pyserial click cryptography future pyparsing pyelftools
+
+      - name: Clone esp32-arduino-lib-builder (IDF v4.4)
+        run: |
+          cd /home/runner/work
+          git clone --depth 1 -b release/v4.4 https://github.com/espressif/esp32-arduino-lib-builder.git lib-builder
+
+      - name: Setup IDF v4.4 and toolchain
+        run: |
+          cd /home/runner/work/lib-builder
+          unset GITHUB_REPOSITORY_OWNER
+          unset GITHUB_TOKEN
+          # Setup IDF for ESP32-C3 (downloads toolchain + clones IDF v4.4)
+          ./build.sh -t esp32c3 -I release/v4.4 -b idf_libs > /tmp/setup.log 2>&1 || true
+          echo "=== Setup log (tail 20) ==="
+          tail -20 /tmp/setup.log
+          # Remove incompatible components (don't fail if they don't exist)
+          rm -rf components/esp-dl components/esp-rainmaker components/espressif__esp-dsp 2>/dev/null || true
+
+      - name: Build C3 20MHz DIO bootloader
+        run: |
+          cd /home/runner/work/lib-builder
+          # Source IDF environment
+          . esp-idf/export.sh
+
+          # Create minimal project for bootloader-only build
+          BOOT_DIR=/tmp/bootloader_build
+          rm -rf $BOOT_DIR
+          mkdir -p $BOOT_DIR/main
+
+          echo 'void app_main() {}' > $BOOT_DIR/main/main.c
+
+          cat > $BOOT_DIR/CMakeLists.txt << 'EOF'
+          cmake_minimum_required(VERSION 3.16)
+          include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+          project(bootloader_build)
+          EOF
+
+          cat > $BOOT_DIR/main/CMakeLists.txt << 'EOF'
+          idf_component_register(SRCS "main.c")
+          EOF
+
+          cd $BOOT_DIR
+          idf.py set-target esp32c3
+
+          # Apply 20MHz DIO flash config via sdkconfig.defaults
+          cat > sdkconfig.defaults << 'SDKEOF'
+          CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+          CONFIG_ESPTOOLPY_FLASHFREQ_20M=y
+          CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+          CONFIG_BOOTLOADER_COMPILER_OPTIMIZATION_SIZE=y
+          CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
+          CONFIG_PARTITION_TABLE_SINGLE_APP=y
+          CONFIG_ESPTOOLPY_FLASHSIZE_DETECT=y
+          SDKEOF
+
+          idf.py reconfigure
+
+          echo "=== sdkconfig (flash settings) ==="
+          grep -E "FLASH|BOOTLOADER_COMPILER|BOOTLOADER_LOG" sdkconfig
+
+          # Build bootloader only
+          idf.py bootloader
+
+          echo "=== Bootloader output ==="
+          ls -la build/bootloader/
+
+          # Copy to framework repo
+          cp build/bootloader/bootloader.elf $GITHUB_WORKSPACE/tools/sdk/esp32c3/bin/bootloader_dio_20m.elf
+          echo "Copied bootloader.elf to framework SDK"
+
+      - name: Generate bootloader BIN
+        run: |
+          pip install esptool
+          cd $GITHUB_WORKSPACE/tools/sdk/esp32c3/bin/
+          esptool.py --chip esp32c3 elf2image \
+            --flash_mode dio --flash_freq 20m --flash_size 8MB \
+            -o bootloader_dio_20m.bin bootloader_dio_20m.elf
+          echo "=== Generated files ==="
+          ls -la bootloader_dio_20m.*
+
+      - name: Commit and push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd $GITHUB_WORKSPACE
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/Mymetu/framework-arduinoespressif32-pm.git"
+          git add tools/sdk/esp32c3/bin/bootloader_dio_20m.elf tools/sdk/esp32c3/bin/bootloader_dio_20m.bin
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Build: add ESP32-C3 20MHz DIO bootloader"
+            git push
+            echo "Pushed 20MHz C3 bootloader!"
+          fi
